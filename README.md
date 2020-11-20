@@ -5,7 +5,8 @@ TypeScript implementation of X3DH, as described in
 
 [![Support me on Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dsoatok%26type%3Dpatrons&style=for-the-badge)](https://patreon.com/soatok)
 
-
+[![Travis CI](https://travis-ci.org/soatok/rawr-x3dh.svg?branch=master)](https://travis-ci.org/soatok/rawr-x3dh)
+[![npm version](https://img.shields.io/npm/v/rawr-x3dh.svg)](https://npm.im/rawr-x3dh)
 
 ## What Is This?
 
