@@ -1,14 +1,14 @@
 # Rawr X3DH
 
 TypeScript implementation of X3DH, as described in
-[Going Bark: A Furry's Guide to End-to-End Encryption](https://soatok.blog/2020/11/14/going-bark-a-furrys-guide-to-end-to-end-encryption/).
+***[Going Bark: A Furry's Guide to End-to-End Encryption](https://soatok.blog/2020/11/14/going-bark-a-furrys-guide-to-end-to-end-encryption/)***.
 
 [![Support me on Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dsoatok%26type%3Dpatrons&style=for-the-badge)](https://patreon.com/soatok)
 
 [![Travis CI](https://travis-ci.org/soatok/rawr-x3dh.svg?branch=master)](https://travis-ci.org/soatok/rawr-x3dh)
 [![npm version](https://img.shields.io/npm/v/rawr-x3dh.svg)](https://npm.im/rawr-x3dh)
 
-## What Is This?
+## [OwO](https://soatok.files.wordpress.com/2020/09/soatoktelegrams2020-06.png) What's This?
 
 This library implements the [Extended Triple Diffie-Hellman](https://signal.org/docs/specifications/x3dh/)
 key exchange, with a few minor tweaks:
@@ -19,6 +19,19 @@ key exchange, with a few minor tweaks:
    (assuming you implement the interface I provide), so you aren't
    married to HKDF or a particular cipher. (Although I recommend hard-coding
    it to your application!)
+
+## Installation
+
+First, you'll want to install this library via your package manager.
+
+```terminal
+npm install rawr-x3dh
+```
+
+If you're working server-side, you'll also want to install [sodium-native](https://www.npmjs.com/package/sodium-native),
+so that [sodium-plus](https://www.npmjs.com/package/sodium-plus) will run faster.
+
+If you're working in a browser or browser extension, don't install sodium-native.
 
 ## Usage
 
@@ -37,10 +50,10 @@ for your own.
 import { X3DH } from 'rawr-x3dh';
 
 const x3dh = new X3DH(
-    sessionKeyManager,
-    identityKeyManager,
-    symmetricEncryptionHandler,
-    keyDerivationFunction
+    sessionKeyManager, /* SessionKeyManagerInterface */
+    identityKeyManager, /* IdentityKeyManagerInterface */
+    symmetricEncryptionHandler, /* SymmetricEncryptionInterface */
+    keyDerivationFunction /* KeyDerivationFunction */
 );
 ```
 
@@ -85,3 +98,52 @@ should be usable for `decryptNext()` calls.
 However, that doesn't mean it's trustworthy! This library only implements
 the X3DH pattern. It doesn't implement the 
 [Gossamer integration](https://soatok.blog/2020/11/14/going-bark-a-furrys-guide-to-end-to-end-encryption/#identity-key-management).
+
+## Should I Use This?
+
+Don't use it in production until version 1.0.0 has been tagged.
+The API can break at any moment until that happens (especially if
+I decide I hate the default key management classes I wrote).
+
+However, feel free to test and play with it.
+
+## Questions and Answers
+
+### Any Interest in Porting This to $LANG?
+
+I'd love to port this to more languages! That will also allow me to write end-to-end integration tests.
+
+As long as there's a good [libsodium implementation](https://libsodium.gitbook.io/doc/bindings_for_other_languages),
+it should be doable.
+
+However, I don't have *nearly* as much free time as I'd like, so I can't commit to
+building or supporting multiple implementations right now.
+
+Conversely, if you've ported this to another language, let me know and I'll maintain
+a list here:
+
+* (Currently, none.)
+
+### Why "Rawr"?
+
+The canonical abbreviation for the eXtended 3-way Diffie Hellman
+deniable authenticated key exchange is X3DH.
+
+There is a [cursed furry copypasta/meme](https://knowyourmeme.com/memes/notices-bulge-owo-whats-this) 
+that begins with "rawr x3". The juxtaposition of "x3" and "X3DH" is too perfect
+an opportunity for dumb jokes to pass up.
+
+### Is this a furry thing?
+
+[![You betcha!](https://soatok.files.wordpress.com/2020/08/soatoktelegrams2020-03.png)](https://soatok.blog/2020/11/14/going-bark-a-furrys-guide-to-end-to-end-encryption/)
+
+And remember: It's not *furry trash*, it's *yiff-raff*.
+
+#### Why? Just, Why?
+
+I've written a lot of words to answer this line of questioning already on [my blog](https://soatok.blog).
+
+You will probably find the answer you're seeking [here](https://soatok.blog/2020/07/09/a-word-on-anti-furry-sentiments-in-the-tech-community/)
+or [here](https://soatok.blog/2020/10/23/solving-for-why-furry-blogging-about-cryptography/).
+
+![Comic by loviesophiee](https://soatok.files.wordpress.com/2020/07/increase-the-thing.png)
