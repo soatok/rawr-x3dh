@@ -147,3 +147,9 @@ You will probably find the answer you're seeking [here](https://soatok.blog/2020
 or [here](https://soatok.blog/2020/10/23/solving-for-why-furry-blogging-about-cryptography/).
 
 ![Comic by loviesophiee](https://soatok.files.wordpress.com/2020/07/increase-the-thing.png)
+
+#### This is Unprofessional
+
+Folks often say there's an XKCD for Everything! And thus:
+
+[![XKCD](https://imgs.xkcd.com/comics/dreams.png)](https://xkcd.com/137/)
