@@ -74,7 +74,14 @@ const nextEncrypted = await x3dh.encryptNext(
 On the other side, your communication partner will use the following feature.
 
 ```typescript
-const firstMessage = await x3dh.initRecv(senderInfo);
-const nextMessage = await x3dh.decryptNext('sender@server1', nextEncrypted);
+const [sender, firstMessage] = await x3dh.initRecv(senderInfo);
+const nextMessage = await x3dh.decryptNext(sender, nextEncrypted);
 ```
 
+Note: `initRecv()` will always return the sender identity (a string) and the
+message (a `Buffer` that can be converted to a string). The sender identity
+should be usable for `decryptNext()` calls.
+
+However, that doesn't mean it's trustworthy! This library only implements
+the X3DH pattern. It doesn't implement the 
+[Gossamer integration](https://soatok.blog/2020/11/14/going-bark-a-furrys-guide-to-end-to-end-encryption/#identity-key-management).

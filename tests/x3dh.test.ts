@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import 'mocha';
 import { X3DH } from "../index";
-import {Ed25519PublicKey, Ed25519SecretKey, SodiumPlus} from "sodium-plus";
-import {signBundle} from "../lib/util";
+import { Ed25519PublicKey, Ed25519SecretKey, SodiumPlus } from "sodium-plus";
+import { signBundle } from "../lib/util";
 
 describe('X3DH Unit Tests', async () => {
     it('generateOneTimeKeys', async () => {
@@ -63,11 +63,12 @@ describe('X3DH End-to-End Tests', async () => {
         const sent = await fox_x3dh.initSend('wolf', wolfResponse, message);
 
         // 6. Pass the handshake to wolf->fox
-        const recv = (await wolf_x3dh.initRecv(sent)).toString();
-        expect(recv).to.be.equal(message);
+        const [sender, recv] = await wolf_x3dh.initRecv(sent);
+        expect(sender).to.be.equal('fox');
+        expect(recv.toString()).to.be.equal(message);
 
         // Send and receive a few more:
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 20; i++) {
             try {
                 const plain = `OwO what's this? ${i}`;
                 if ((i % 3) === 0) {
@@ -80,10 +81,6 @@ describe('X3DH End-to-End Tests', async () => {
                     expect(decrypt.toString()).to.be.equal(plain, `round ${i + 1}`);
                 }
             } catch (e) {
-                console.log(
-                    await fox_x3dh.identityKeyManager.getMyIdentityString(),
-                    await wolf_x3dh.identityKeyManager.getMyIdentityString()
-                );
                 console.log("Failed at i = " + i);
                 throw e;
             }

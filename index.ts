@@ -1,3 +1,49 @@
+/**
+ * Rawr-X3DH -- eXtended 3-way Diffie-Hellman
+ *
+ * Specification by Open Whisper Systems <https://signal.org/docs/specifications/x3dh/>
+ * Powered by Libsodium <https://libsodium.gitbook.io/doc/>
+ *
+ * Implemented by Soatok Dreamseeker <https://soatok.blog>
+ *
+ * ................................:.................
+ * .............................-+yd-................
+ * ............/+:-.....+/oys++://:m:................
+ * --........../y///oyssyyyyhddh+-:y/................
+ * --------.....o--+syyso/syyyhho:--+..........:-....
+ * ----------.....:/ssss+ooyoosyo//yo.--------oy:....
+ * --------------:+//+//++:`-/o-syyy/-------+yo------
+ * --------------:oy++:s. ++:+: `ys/------/ss:-------
+ * ---------------:+++syh--/++++oss//---:oy+---------
+ * ----------------:syyhhysosssyyyyhso/+yo:----------
+ * ----------------::shddyyhyyyyshdhyyyy/------------
+ * ----------------:shhhyyyssssssoyhhhyhho/::--------
+ * ::::::---------:+shhhddd+o+++++yddhhhhhyyyso+::::-
+ * ::::::::::::o+oyssyhyhdh+///:+hhoshhhhhhhhyo+:::::
+ * ::::::::::::+syyssss/:yyoo+sydo/o+s+/+osyysoo/::::
+ * ::::::::::::/+ssyyyyy/:oyyhhhs/ss/y/::::::::::::::
+ * :::::::::::::::/+syhhhsyhhhhyyss+oo/::::::::::::::
+ * :::::::::/o+/:::::/+syhddddysyso+so/:::::////:::::
+ * ::::::+yhhyhhs::::::/yhdddddssso/ss:::::::///:::::
+ * :::::::::hhhh+/+/:/shoshyysss/  `+s:::::://::::/::
+ * ::::::::+hhhho:+sshhsyhhhs+:.     `-//::::::::::::
+ * ::::::::ohhyoo+oyhyyhhhyyssoo/:-`    .:/::::::::::
+ * :::::::::syso+syhhhhhhhhhhhhhhyyyo:`   ./:::::::::
+ * :::::::::--://+o++osyo+yhhhhhhhhhhyys/`  :::::::::
+ * ::::::--.:/+/::::-::::yhhhhhhhhhhhyyy+.  :::::::::
+ * :------://:::::----:::/yhyyyyyyyyyys+`   :+:::::::
+ * ------::-----------:shyhhyyyyss+/:-...-::+//::::::
+ * ------------------/yhhhhhhyyyssso+::::::::::::::::
+ * -----------------+yyyhhhhhhhyyssso+/---------:::::
+ * ---------------/syyys/yhhhhhhyyyysss+-------------
+ * .............:syyyyo---oyhhhhhhhhyyyhs------------
+ * ...........-oyyyyyo....-+syyhyyhhhhddy------------
+ * ...........syyyyys-......-::::+:////:.------------
+ * ...........yyyyys:............-...............----
+ * ...........+sss:..................................
+ * .....````````.``..................................
+ *
+ */
 import {
     CryptographyKey,
     Ed25519PublicKey,
@@ -351,9 +397,9 @@ export class X3DH {
      * Throws on failure.
      *
      * @param {InitSenderInfo} req
-     * @returns {string|Buffer}
+     * @returns {(string|Buffer)[]}
      */
-    async initRecv(req: InitSenderInfo) {
+    async initRecv(req: InitSenderInfo): Promise<(string|Buffer)[]> {
         const sodium = await this.getSodium();
         const {identitySecret, identityPublic} = await this.identityKeyManager.getIdentityKeypair();
         const {preKeySecret} = await this.identityKeyManager.getPreKeypair();
@@ -368,11 +414,14 @@ export class X3DH {
         try {
             await this.sessionKeyManager.setSessionKey(Sender, SK, true);
             await this.sessionKeyManager.setAssocData(Sender, assocData);
-            return this.encryptor.decrypt(
-                req.CipherText,
-                await this.sessionKeyManager.getEncryptionKey(Sender, true),
-                assocData
-            );
+            return [
+                Sender,
+                await this.encryptor.decrypt(
+                    req.CipherText,
+                    await this.sessionKeyManager.getEncryptionKey(Sender, true),
+                    assocData
+                )
+            ];
         } catch (e) {
             // Decryption failure! Destroy the session.
             await this.sessionKeyManager.destroySessionKey(Sender);
@@ -410,6 +459,11 @@ export class X3DH {
         );
     }
 
+    /**
+     * Sets the identity string for the current user.
+     *
+     * @param {string} id
+     */
     async setIdentityString(id: string): Promise<void> {
         return this.identityKeyManager.setMyIdentityString(id);
     }
