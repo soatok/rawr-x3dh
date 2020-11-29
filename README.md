@@ -153,3 +153,7 @@ or [here](https://soatok.blog/2020/10/23/solving-for-why-furry-blogging-about-cr
 Folks often say there's an XKCD for Everything! And thus:
 
 [![XKCD](https://imgs.xkcd.com/comics/dreams.png)](https://xkcd.com/137/)
+
+#### Who Made That Awesome Project Logo?
+
+[Sophie](https://twitter.com/loviesophiee) made it.
