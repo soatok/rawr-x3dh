@@ -1,4 +1,4 @@
-# Rawr X3DH
+# ![Rawr X3DH](RawrX3DH-Github.png)
 
 TypeScript implementation of X3DH, as described in
 ***[Going Bark: A Furry's Guide to End-to-End Encryption](https://soatok.blog/2020/11/14/going-bark-a-furrys-guide-to-end-to-end-encryption/)***.
