@@ -468,3 +468,8 @@ export class X3DH {
         return this.identityKeyManager.setMyIdentityString(id);
     }
 }
+
+/* Let's make sure we export the interfaces/etc. we use. */
+export * from "./lib/symmetric";
+export * from "./lib/persistence";
+export * from "./lib/util";

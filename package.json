@@ -1,10 +1,11 @@
 {
   "name": "rawr-x3dh",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "index.ts",
   "scripts": {
     "test": "mocha -r ts-node/register ./tests/*.ts"
   },
+  "repository": "github:soatok/rawr-x3dh",
   "type": "module",
   "keywords": [
     "X3DH",
@@ -13,9 +14,9 @@
     "Diffie-Hellman"
   ],
   "dependencies": {
-    "tslib": "^2.0.3",
+    "@types/node": "^14.14.10",
     "sodium-plus": "^0.9.0",
-    "@types/node": "^14.14.9"
+    "tslib": "^2.0.3"
   },
   "devDependencies": {
     "@types/chai": "^4.2.14",
