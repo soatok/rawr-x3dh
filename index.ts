@@ -182,7 +182,7 @@ export class X3DH {
         await this.identityKeyManager.persistOneTimeKeys(bundle);
 
         // Hex-encode all the public keys
-        const encodedBundle = [];
+        const encodedBundle : string[] = [];
         for (let pk of publicKeys) {
             encodedBundle.push(await sodium.sodium_bin2hex(pk.getBuffer()));
         }
