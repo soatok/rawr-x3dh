@@ -51,10 +51,11 @@ export async function generateKeyPair(): Promise<Keypair> {
  * @returns {Keypair[]}
  */
 export async function generateBundle(preKeyCount: number = 100): Promise<Keypair[]> {
-    const bundle = [];
+    const bundle: Keypair[] = [];
     for (let i = 0; i < preKeyCount; i++) {
         bundle.push(await generateKeyPair());
     }
+        
     return bundle;
 }
 

@@ -11,7 +11,7 @@ import { promises as fsp } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-export type IdentityKeyPair = {identitySecret: Ed25519SecretKey, identityPublic: Ed25519PublicKey};
+export type IdentityKeyPair = {identitySecret: Ed25519SecretKey, identityPublic: Ed25519PublicKey|any};
 export type PreKeyPair = {preKeySecret: X25519SecretKey, preKeyPublic: X25519PublicKey};
 type SessionKeys = {sending: CryptographyKey, receiving: CryptographyKey};
 
@@ -30,10 +30,14 @@ export interface IdentityKeyManagerInterface {
         Promise<PreKeyPair>;
     persistOneTimeKeys(bundle: Keypair[]):
         Promise<void>;
-    setIdentityKeypair(identitySecret: Ed25519SecretKey, identityPublic?: Ed25519PublicKey):
+    setIdentityKeypair(identitySecret: Ed25519SecretKey, identityPublic: Ed25519PublicKey):
         Promise<IdentityKeyManagerInterface>;
     setMyIdentityString(id: string):
         Promise<void>;
+    persistPrekeyPair(prekeyPair: PreKeyPair):
+        Promise<void>
+    saveIdentityKeypair(identitykeypair: IdentityKeyPair, filePath?: string):
+        Promise<void>
 }
 
 export interface SessionKeyManagerInterface {
@@ -58,7 +62,7 @@ export interface SessionKeyManagerInterface {
  */
 export class DefaultSessionKeyManager implements SessionKeyManagerInterface {
     assocData: Map<string, string>;
-    sodium: SodiumPlus;
+    sodium!: SodiumPlus;
     sessions: Map<string, SessionKeys>;
 
     constructor(sodium?: SodiumPlus) {
@@ -87,7 +91,7 @@ export class DefaultSessionKeyManager implements SessionKeyManagerInterface {
     }
 
     async listSessionIds(): Promise<string[]> {
-        const ids = [];
+        const ids:string[] = [];
         for (let i in this.sessions) {
             ids.push(i);
         }
@@ -127,6 +131,7 @@ export class DefaultSessionKeyManager implements SessionKeyManagerInterface {
                 await sodium.crypto_generichash('sending', key)
             );
         }
+        
     }
 
     /**
@@ -182,8 +187,8 @@ export class DefaultSessionKeyManager implements SessionKeyManagerInterface {
             64
         );
         return [
-            new CryptographyKey(fullhash.slice(0,  32)),
-            new CryptographyKey(fullhash.slice(32, 64)),
+            new CryptographyKey(fullhash.subarray(0,  32)),
+            new CryptographyKey(fullhash.subarray(32, 64)),
         ]
     }
 
@@ -214,10 +219,10 @@ export class DefaultSessionKeyManager implements SessionKeyManagerInterface {
 export class DefaultIdentityKeyManager implements IdentityKeyManagerInterface {
     identitySecret?: Ed25519SecretKey;
     identityPublic?: Ed25519PublicKey;
-    myIdentityString?: string;
+    myIdentityString?: string|any;
     preKey?: PreKeyPair;
     oneTimeKeys: Map<string, X25519SecretKey>;
-    sodium: SodiumPlus;
+    sodium!: SodiumPlus;
 
     constructor(sodium?: SodiumPlus, sk?: Ed25519SecretKey, pk?: Ed25519PublicKey) {
         if (sodium) {
@@ -301,7 +306,7 @@ export class DefaultIdentityKeyManager implements IdentityKeyManagerInterface {
      */
     async getIdentityKeypair(): Promise<IdentityKeyPair> {
         if (!this.identitySecret) {
-            const keypair = await this.loadIdentityKeypair();
+            const keypair = await this.loadIdentityKeypair("");
             await this.setIdentityKeypair(keypair.identitySecret, keypair.identityPublic);
             return keypair;
         }
@@ -319,7 +324,8 @@ export class DefaultIdentityKeyManager implements IdentityKeyManagerInterface {
      */
     async getPreKeypair(): Promise<PreKeyPair> {
         const sodium = await this.getSodium();
-        if (!this.preKey) {
+        if (this.preKey==undefined) {
+            console.log(`Prekey pair not found, generating......`)
             this.preKey = await this.generatePreKeypair();
         }
         return this.preKey;
@@ -331,10 +337,10 @@ export class DefaultIdentityKeyManager implements IdentityKeyManagerInterface {
      * @param {string} filePath
      * @returns {IdentityKeyPair}
      */
-    async loadIdentityKeypair(filePath?: string): Promise<IdentityKeyPair> {
+    async loadIdentityKeypair(filePath: string): Promise<IdentityKeyPair> {
         const sodium = await this.getSodium();
         if (!filePath) {
-            filePath = path.join(os.homedir(), 'rawr-identity.json')
+            filePath = path.join(os.homedir(), filePath)
         }
         await fsp.access(filePath);
         const data: Buffer = await fsp.readFile(filePath);
@@ -363,10 +369,10 @@ export class DefaultIdentityKeyManager implements IdentityKeyManagerInterface {
     /**
      * Save a given identity keypair (Ed25519) to the filesystem.
      *
-     * @param {Ed25519SecretKey} identitySecret
+     * @param {IdentityKeyPair} identityKeypair
      * @param {string|null} filePath
      */
-    async saveIdentityKeypair(identitySecret: Ed25519SecretKey, filePath?: string): Promise<void> {
+    async saveIdentityKeypair(identityKeypair: IdentityKeyPair, filePath?: string): Promise<void> {
         const sodium = await this.getSodium();
         if (!filePath) {
             filePath = path.join(os.homedir(), 'rawr-identity.json')
@@ -374,10 +380,22 @@ export class DefaultIdentityKeyManager implements IdentityKeyManagerInterface {
         await fsp.writeFile(
             filePath,
             JSON.stringify({
-                'sk': await sodium.sodium_bin2hex(identitySecret.getBuffer()),
-                'pk': await sodium.sodium_bin2hex(identitySecret.getBuffer().slice(32)),
+                'sk': await sodium.sodium_bin2hex(identityKeypair.identitySecret.getBuffer()),
+                //identitySecret.getBuffer().subarray(32)
+                'pk': await sodium.sodium_bin2hex(identityKeypair.identityPublic.getBuffer()),
             })
         );
+    }
+
+
+    /**
+     * Saves the prekey pair to memory
+     * @param {X25519PublicKey} preKeyPublic
+     * @param {X25519SecretKey} prekeySecret 
+     */
+
+    async persistPrekeyPair(prekeyPair:PreKeyPair): Promise<void> {
+        this.preKey = prekeyPair;
     }
 
     /**
@@ -389,7 +407,7 @@ export class DefaultIdentityKeyManager implements IdentityKeyManagerInterface {
     async setIdentityKeypair(identitySecret: Ed25519SecretKey, identityPublic?: Ed25519PublicKey): Promise<this> {
         if (!identityPublic) {
             identityPublic = new Ed25519PublicKey(
-                identitySecret.getBuffer().slice(32)
+                identitySecret.getBuffer().subarray(32)
             );
         }
         this.identitySecret = identitySecret;

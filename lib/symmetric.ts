@@ -17,7 +17,7 @@ const PREFIX_COMMIT_KEY = new Uint8Array([
  */
 export interface SymmetricEncryptionInterface {
     encrypt(
-        message: string|Buffer,
+        message: string | Buffer,
         key: CryptographyKey,
         assocData?: string
     ): Promise<string>;
@@ -25,7 +25,7 @@ export interface SymmetricEncryptionInterface {
         message: string,
         key: CryptographyKey,
         assocData?: string
-    ): Promise<string|Buffer>;
+    ): Promise<string | Buffer>;
 }
 
 /**
@@ -33,7 +33,7 @@ export interface SymmetricEncryptionInterface {
  */
 export class SymmetricCrypto implements SymmetricEncryptionInterface {
     async encrypt(
-        message: string|Buffer,
+        message: string | Buffer,
         key: CryptographyKey,
         assocData?: string
     ): Promise<string> {
@@ -43,7 +43,7 @@ export class SymmetricCrypto implements SymmetricEncryptionInterface {
         message: string,
         key: CryptographyKey,
         assocData?: string
-    ): Promise<string|Buffer> {
+    ): Promise<string | Buffer> {
         return decryptData(message, key, assocData);
     }
 }
@@ -57,7 +57,7 @@ export type KeyDerivationFunction = (ikm: Uint8Array, salt?: Uint8Array, info?: 
  * @param {Uint8Array} nonce
  * @returns {{encKey: CryptographyKey, commitment: Uint8Array}}
  */
-export async function deriveKeys(key, nonce) {
+export async function deriveKeys(key: CryptographyKey, nonce: Uint8Array): Promise<{ encKey: CryptographyKey; commitment: Uint8Array; }> {
     if (!sodium) sodium = await SodiumPlus.auto();
 
     const encKey = new CryptographyKey(await sodium.crypto_generichash(
@@ -70,7 +70,7 @@ export async function deriveKeys(key, nonce) {
         key,
         32
     );
-    return {encKey, commitment};
+    return { encKey, commitment };
 }
 
 /**
@@ -83,7 +83,7 @@ export async function deriveKeys(key, nonce) {
  * @returns {string}
  */
 export async function encryptData(
-    message: string|Buffer,
+    message: string | Buffer,
     key: CryptographyKey,
     assocData?: string
 ): Promise<string> {
@@ -96,7 +96,7 @@ export async function encryptData(
         'nonce': await sodium.sodium_bin2hex(nonce),
         'extra': assocData
     });
-    const {encKey, commitment} = await deriveKeys(key, nonce);
+    const { encKey, commitment } = await deriveKeys(key, nonce);
     const encrypted = await sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
         message,
         nonce,
@@ -124,10 +124,9 @@ export async function decryptData(
     encrypted: string,
     key: CryptographyKey,
     assocData?: string
-): Promise<string|Buffer> {
+): Promise<string | Buffer> {
     // Load libsodium
     if (!sodium) sodium = await SodiumPlus.auto();
-
     const ver = Buffer.from(encrypted.slice(0, 2), 'utf-8');
     if (!await sodium.sodium_memcmp(ver, VERSION_BUF)) {
         throw new Error("Incorrect version: " + encrypted.slice(0, 2));
@@ -140,7 +139,7 @@ export async function decryptData(
         'extra': assocData
     });
     const storedCommitment = await sodium.sodium_hex2bin(encrypted.slice(50, 114));
-    const {encKey, commitment} = await deriveKeys(key, nonce);
+    const { encKey, commitment } = await deriveKeys(key, nonce);
     if (!(await sodium.sodium_memcmp(storedCommitment, commitment))) {
         throw new Error("Incorrect commitment value");
     }
@@ -161,7 +160,7 @@ export async function decryptData(
  */
 export async function blakeKdf(
     ikm: Uint8Array,
-    salt?: Uint8Array|CryptographyKey,
+    salt?: Uint8Array | CryptographyKey,
     info?: Uint8Array
 ): Promise<Uint8Array> {
     if (!sodium) sodium = await SodiumPlus.auto();
