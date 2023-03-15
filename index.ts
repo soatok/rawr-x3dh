@@ -61,7 +61,8 @@ import {
     DefaultSessionKeyManager,
     SessionKeyManagerInterface,
     IdentityKeyManagerInterface,
-    DefaultIdentityKeyManager
+    DefaultIdentityKeyManager,
+    PreKeyPair
 } from "./lib/persistence";
 import {
     concat,
@@ -94,7 +95,7 @@ export type InitSenderInfo = {
     Sender: string,
     IdentityKey: string,
     EphemeralKey: string,
-    OneTimeKey?: string,
+    OneTimeKey?: string | null,
     CipherText: string
 };
 
@@ -107,7 +108,7 @@ export type InitClientFunction = (id: string) => Promise<InitServerInfo>;
 /**
  * Signed key bundle.
  */
-export type SignedBundle = {signature: string, bundle: string[]};
+export type SignedBundle = { signature: string, bundle: string[] };
 
 /**
  * Initialization information for receiving a handshake message.
@@ -116,7 +117,7 @@ type RecipientInitWithSK = {
     IK: Ed25519PublicKey,
     EK: X25519PublicKey,
     SK: CryptographyKey,
-    OTK?: string
+    OTK?: string | null
 };
 
 /**
@@ -127,8 +128,7 @@ export class X3DH {
     kdf: KeyDerivationFunction;
     identityKeyManager: IdentityKeyManagerInterface;
     sessionKeyManager: SessionKeyManagerInterface;
-    sodium: SodiumPlus;
-
+    sodium!: SodiumPlus;
     constructor(
         identityKeyManager?: IdentityKeyManagerInterface,
         sessionKeyManager?: SessionKeyManagerInterface,
@@ -180,9 +180,16 @@ export class X3DH {
         const publicKeys = bundle.map(x => x.publicKey);
         const signature = await signBundle(signingKey, publicKeys);
         await this.identityKeyManager.persistOneTimeKeys(bundle);
-
+        //Persisting the identity prekey pair to be later used for decryption
+        if (numKeys == 1) {
+            const prekeyPair: PreKeyPair = {
+                preKeyPublic: bundle[0].publicKey,
+                preKeySecret: bundle[0].secretKey
+            }
+            await this.identityKeyManager.persistPrekeyPair(prekeyPair);
+        }
         // Hex-encode all the public keys
-        const encodedBundle : string[] = [];
+        const encodedBundle: string[] = [];
         for (let pk of publicKeys) {
             encodedBundle.push(await sodium.sodium_bin2hex(pk.getBuffer()));
         }
@@ -192,6 +199,9 @@ export class X3DH {
             'bundle': encodedBundle
         };
     }
+   
+
+
 
     /**
      * Get the shared key when sending an initial message.
@@ -229,7 +239,7 @@ export class X3DH {
         const DH1 = await sodium.crypto_scalarmult(senderX, signedPreKey);
         const DH2 = await sodium.crypto_scalarmult(ephSecret, recipientX);
         const DH3 = await sodium.crypto_scalarmult(ephSecret, signedPreKey);
-        let SK;
+        let SK:CryptographyKey;
         if (res.OneTimeKey) {
             let DH4 = await sodium.crypto_scalarmult(
                 ephSecret,
@@ -264,13 +274,13 @@ export class X3DH {
         await wipe(DH3);
         await wipe(ephSecret);
         await wipe(senderX);
-
-        return {
+        const recipientPayload: RecipientInitWithSK = {
             IK: identityKey,
             EK: ephPublic,
             SK: SK,
-            OTK: res.OneTimeKey
+            OTK:  res.OneTimeKey ? res.OneTimeKey : null
         };
+        return recipientPayload;
     }
 
     /**
@@ -283,7 +293,7 @@ export class X3DH {
     async initSend(
         recipientIdentity: string,
         getServerResponse: InitClientFunction,
-        message: string|Buffer
+        message: string | Buffer
     ): Promise<InitSenderInfo> {
         const sodium = await this.getSodium();
 
@@ -291,14 +301,11 @@ export class X3DH {
         const senderIdentity = await this.identityKeyManager.getMyIdentityString();
         const identity = await this.identityKeyManager.getIdentityKeypair();
         const senderSecretKey = identity.identitySecret;
-        const senderPublicKey = identity.identityPublic;
-
+        const senderPublicKey: Ed25519PublicKey = identity.identityPublic;
         // Stub out a call to get the server response:
         const response = await getServerResponse(recipientIdentity);
-
         // Get the shared symmetric key (and other handshake data):
-        const {IK, EK, SK, OTK} = await this.initSenderGetSK(response, senderSecretKey);
-
+        const { IK, EK, SK, OTK } = await this.initSenderGetSK(response, senderSecretKey);
         // Get the assocData for AEAD:
         const assocData = await sodium.sodium_bin2hex(
             Buffer.concat([senderPublicKey.getBuffer(), IK.getBuffer()])
@@ -314,7 +321,7 @@ export class X3DH {
             "OneTimeKey": OTK,
             "CipherText": await this.encryptor.encrypt(
                 message,
-                await this.sessionKeyManager.getEncryptionKey(recipientIdentity),
+                await this.sessionKeyManager.getEncryptionKey(recipientIdentity, false),
                 assocData
             )
         };
@@ -351,7 +358,7 @@ export class X3DH {
         const DH2 = await sodium.crypto_scalarmult(recipientX, ephemeral);
         const DH3 = await sodium.crypto_scalarmult(preKeySecret, ephemeral);
 
-        let SK;
+        let SK:CryptographyKey;
         if (req.OneTimeKey) {
             let DH4 = await sodium.crypto_scalarmult(
                 await this.identityKeyManager.fetchAndWipeOneTimeSecretKey(req.OneTimeKey),
@@ -399,11 +406,11 @@ export class X3DH {
      * @param {InitSenderInfo} req
      * @returns {(string|Buffer)[]}
      */
-    async initRecv(req: InitSenderInfo): Promise<(string|Buffer)[]> {
+    async initRecv(req: InitSenderInfo): Promise<(string | Buffer)[]> {
         const sodium = await this.getSodium();
-        const {identitySecret, identityPublic} = await this.identityKeyManager.getIdentityKeypair();
-        const {preKeySecret} = await this.identityKeyManager.getPreKeypair();
-        const {Sender, SK, IK} = await this.initRecvGetSk(
+        const { identitySecret, identityPublic } = await this.identityKeyManager.getIdentityKeypair();
+        const { preKeySecret } = await this.identityKeyManager.getPreKeypair();
+        const { Sender, SK, IK } = await this.initRecvGetSk(
             req,
             identitySecret,
             preKeySecret
@@ -411,6 +418,7 @@ export class X3DH {
         const assocData = await sodium.sodium_bin2hex(
             Buffer.from(concat(IK.getBuffer(), identityPublic.getBuffer()))
         );
+
         try {
             await this.sessionKeyManager.setSessionKey(Sender, SK, true);
             await this.sessionKeyManager.setAssocData(Sender, assocData);
@@ -436,7 +444,7 @@ export class X3DH {
      * @param {string|Buffer} message
      * @returns {string}
      */
-    async encryptNext(recipient: string, message: string|Buffer): Promise<string> {
+    async encryptNext(recipient: string, message: string | Buffer): Promise<string> {
         return this.encryptor.encrypt(
             message,
             await this.sessionKeyManager.getEncryptionKey(recipient, false),
